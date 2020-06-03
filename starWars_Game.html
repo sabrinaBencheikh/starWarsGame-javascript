@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <title>StarWars_Game</title>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    
+
+    <style>
+        #sable{
+          width: 100%;
+          height: 100%;
+        }
+        #panneau{
+            position: relative;
+            width: 100%;
+            background-color:blue;
+        }
+        #playground * {
+          position: absolute;
+        }
+    </style>
+</head>
+<body>
+    
+    
+    <div id="playground">
+        <img src="desert_sand.jpg" id ='sable'>;
+        <div id = "score" class=" btn btn-dark "> Score : 0</div>
+    </div>
+    
+
+
+    <script>        
+
+//declaration des variable globales
+let interval = 0;
+let nbPoints =0;
+avions_affiches =[];
+
+ //music de fond
+                 let audioElement = document.createElement('audio');
+                 audioElement.src = 'starWars.mp3'; 
+                 audioElement.autoplay = true;
+                 audioElement.load();
+ //bruitage de gain
+                let win = document.createElement('audio');
+                 win.src = "1759.wav";
+//bruitage de perte
+                let lose = document.createElement('audio');
+                 lose.src = "foghi.mp3";
+
+
+
+//récupérer les propriété css des object et du playground
+function getWidth(obj){
+                 let elem = document.getElementById(obj);
+                 let width = parseInt(window.getComputedStyle(elem,null).getPropertyValue("width"));
+                 return (width);
+            } 
+             function getHeight(obj){
+                  let elem = document.getElementById(obj);
+                  let height = parseInt(window.getComputedStyle(elem,null).getPropertyValue("height"));
+                  return (height);
+            }
+//fonction random qui retourne un Int
+            function getRandomPosition(min, max) {
+                min = Math.ceil(min);
+                max = Math.floor(max);
+                return Math.floor(Math.random() * (max - min +1)) + min;
+            } 
+//compter le nombre de points
+
+            function comptabiliserPoint(avion = Avion){
+                                if(avion.any_sprite.id === "darthvader.png"){
+                                        document.getElementById('score').className = "btn btn-danger"
+                                        lose.play();
+                                        nbPoints = nbPoints - 500;
+                                        console.log('Aie, darthvader' + nbPoints);
+                                }
+                                if (avion.any_sprite.id === "anakin_starfighter.png" || avion.any_sprite.id === "obi_wan_starfighter.png") {
+                                         document.getElementById('score').className = "btn btn-success"
+                                         win.play();
+                                         nbPoints+= 300;
+                                }
+                                if (avion.any_sprite.id === "naboo_starfighter.png"){
+                                        document.getElementById('score').className = "btn btn-success"
+                                        win.play();
+                                        nbPoints+=200;
+                                }if (avion.any_sprite.id === "x_wing.png") {
+                                        document.getElementById('score').className = "btn btn-success"
+                                        win.play();
+                                        nbPoints+=100;
+                                }
+                                //affichages score
+                                if(nbPoints<0){
+                                game.run = false;
+                            } 
+                            let score = document.getElementById("score");
+                            score.innerHTML = "score: " +  nbPoints;
+                            
+            }
+
+//définition de la notion Position:
+        class Position{
+    
+            constructor(x,y){
+                if (this == undefined || this == window) {
+                return new Position(x,y);
+              }
+              this.x = x;
+              this.y = y;
+            }
+            add(pos = Position){
+                this.x+= pos.x;
+                this.y+= pos.y;
+            }
+            
+        }
+//definition de la notion Size2D        
+        class Size2D{
+            constructor(width, height){
+                if (this == undefined || this == window) {
+                return new Size2D(width,height);
+              }
+                this.width = width;
+                this.height = height;    
+            }
+        }
+ 
+//definiton de la class rectangle
+class Rectangle{
+            constructor(pos = Position, dimensions = Size2D){
+                this.pos = pos;
+                this.dimensions = dimensions;
+            }
+
+            static areIntersecting(r1,r2){
+                if (r1.pos.x < r2.pos.x && r2.pos.x > r1.pos.x + r1.dimensions.width){
+                    return false;
+                }
+                if(r2.pos.x < r1.pos.x && r1.pos.x > r2.pos.x + r2.dimensions.width){
+                    return false;
+                }
+                if(r1.pos.y < r2.pos.y && r2.pos.y > r1.pos.y + r1.dimensions.height){
+                    return false;
+                }
+                if(r2.pos.y < r1.pos.y && r1.pos.y > r2.pos.y + r2.dimensions.height){
+                    return false;
+                }
+                    return true;
+            }
+        }             
+            
+//creation de la super classe sprite
+        class Sprite{
+            
+            constructor(imgPath,insideDOM=window.document.getElementById("playground")){
+               
+                this.pos = new Position (0,0);   
+                this.any_sprite = document.createElement("img");
+                this.any_sprite.src = imgPath;
+                insideDOM.appendChild(this.any_sprite);
+                this.any_sprite.id = imgPath;
+                this.dimensions = new Size2D (getWidth(this.any_sprite.id), getHeight (this.any_sprite.id));
+                this.rectangle = new Rectangle(this.pos, this.dimensions);
+                this.speedX = 0;
+                this.speedY = 0;
+            }
+           
+        
+            moveTo(pos = Position){
+                    this.pos.x = pos.x;
+                    this.pos.y = pos.y;
+                this.any_sprite.style.top = this.pos.y  + 'px';
+                this.any_sprite.style.left = this.pos.x + 'px';
+                
+            }
+
+            moveRel(pos = Position){
+                this.pos.add(pos);
+                this.moveTo(this.pos);
+            }
+
+            moveFrame(duration){
+                let newPosition = new Position ((this.speedX*(duration/1000)), (this.speedY*(duration/1000)));
+                this.moveRel(newPosition);
+            }  
+        }
+
+//creation de la class fille Robot qui hérite de la classe Sprite
+            class Robot extends Sprite{
+            constructor(imgPath,insideDOM){
+                super(imgPath,insideDOM);
+                this.pos.x = getWidth("sable")/2;
+                this.pos.y = getHeight("sable")/2;
+                this.moveTo(this.pos);
+            } 
+            moveTo(pos = Position){
+                if(pos.y < 0 ){
+                    this.pos.y = 0 ;
+                    this.pos.x = pos.x;
+                }
+                if(pos.y >= getHeight("sable")- getHeight (this.any_sprite.id) ){
+                    this.pos.y = getHeight("sable") - getHeight(this.any_sprite.id) ;
+                    this.pos.x = pos.x
+                }
+                if(pos.x < 0){
+                    this.pos.x = 0;
+                    this.pos.y = pos.y;
+                    console.log(pos.x -  getWidth(this.any_sprite.id));
+                }
+                if(pos.x >= getWidth("sable")- getWidth(this.any_sprite.id)){
+                    this.pos.x = getWidth("sable") - getWidth(this.any_sprite.id);
+                    this.pos.y = pos.y;
+                }else{
+                    this.pos.x = pos.x;
+                    this.pos.y = pos.y;
+                }
+                
+                this.any_sprite.style.top = this.pos.y  + 'px';
+                this.any_sprite.style.left = this.pos.x + 'px';
+
+            }
+        }
+
+// creation de la classe Avion
+
+        class Avion extends Sprite{
+            constructor(imgPath, insideDOM){
+                super(imgPath, insideDOM);
+                 this.touched = false;
+                 this.dimensions = new Size2D (128, 128);
+                 this.pos.x = 0;
+                 this.pos.y = getRandomPosition(0, (getHeight("sable") - this.dimensions.height));
+                 this.moveTo(this.pos);
+                 this.rectangle = new Rectangle(this.pos, this.dimensions);
+            }
+            
+            moveTo(pos = Position){
+                if(pos.x >= getWidth("sable")- this.dimensions.width){
+                    let parentElem = this.any_sprite.parentElement;
+                        parentElem.removeChild(this.any_sprite);
+                        avions_affiches.splice(avions_affiches.indexOf(this),1);
+                }else{
+                    this.pos.x = pos.x;
+                    this.pos.y = pos.y;
+                
+                this.any_sprite.style.top = this.pos.y  + 'px';
+                this.any_sprite.style.left = this.pos.x + 'px';
+            }
+            }
+           
+        }
+
+
+//creation de la partie
+
+            let game = {
+                arrowLeft : false,
+                arrowRight : false,
+                arrowUp : false,
+                arrowDown : false,
+                run: true,
+                tFrameLast : 0,
+                R2D2 : new Robot("R2D2.png",window.document.getElementById("playground"))
+            }
+             game.afficher_avion= function(){
+                let avions = ["obi_wan_starfighter.png", "naboo_starfighter.png", "anakin_starfighter.png", "x_wing.png", "darthvader.png" ];
+                return new Avion(avions[getRandomPosition(0,avions.length-1)],insideDOM=window.document.getElementById("playground"));
+             }
+             
+  
+              
+//Les evennements
+           document.addEventListener("keydown",function(event){
+                if(event.key == "ArrowLeft"){
+                    game.arrowLeft = true;
+                }
+                if(event.key == "ArrowRight"){
+                    game.arrowRight = true;
+                }
+                if(event.key == "ArrowUp"){
+                    game.arrowUp = true;
+                }
+                if(event.key == "ArrowDown"){
+                    game.arrowDown = true;
+                }
+           });
+           document.addEventListener("keyup", function(event){
+                if(event.key == "ArrowLeft"){
+                    game.arrowLeft = false;
+                }
+                if(event.key == "ArrowRight"){
+                    game.arrowRight = false;
+                }
+                if(event.key == "ArrowUp"){
+                    game.arrowUp = false;
+                }
+                if(event.key == "ArrowDown"){
+                    game.arrowDown = false;
+                }
+           });
+           document.addEventListener("keypress", function(event){
+                if(event.key == 's'){
+                    game.run = false;
+                }
+           });
+
+           document.addEventListener('keypress', function(event){
+                if(event.keyCode == 13){
+                    x = getWidth("sable")/2;
+                    y = getHeight("sable")/2;
+                    let center = new Position(x,y);
+                    game.R2D2.moveTo(center);
+                }
+           });
+// fonction de mise a jour de laffichage
+
+           game.update = function (tFrame){
+                    let time_sec = tFrame - game.tFrameLast;
+
+                   
+                        //afficher les avions  ++ darthvader
+                    	  if(interval == 0){
+                            let avion = game.afficher_avion();
+                            avions_affiches.push(avion);
+                            interval =15;
+                        }else{
+                            interval-=1;
+                        }
+                        
+                        //boucle pour attraper les avions && bouger les avions  ++ compter nbPoints        
+                        for (let i=0; i<avions_affiches.length;i++){
+                            if(Rectangle.areIntersecting(game.R2D2.rectangle, avions_affiches[i].rectangle)){
+                                    comptabiliserPoint(avions_affiches[i]);
+                                    console.log('touché'+ nbPoints);
+                                    let parentelem = avions_affiches[i].any_sprite.parentElement;
+                                    parentelem.removeChild(avions_affiches[i].any_sprite);
+                                    avions_affiches.splice(i,1);
+                            }
+                            avions_affiches[i].speedX=500;
+                            avions_affiches[i].speedY=0;
+                            avions_affiches[i].moveFrame(time_sec);
+                        }                           
+                    
+            // bouger r2d2
+                    if(game.arrowLeft){
+						game.R2D2.speedY= 0;
+						game.R2D2.speedX=-750;
+						game.R2D2.moveFrame(time_sec);
+					}if(game.arrowUp){
+						game.R2D2.speedX=0;
+						game.R2D2.speedY=-750;
+						game.R2D2.moveFrame(time_sec);
+					}if(game.arrowRight){
+						game.R2D2.speedY=0;
+						game.R2D2.speedX=750;
+						game.R2D2.moveFrame(time_sec);
+					} if(game.arrowDown){
+						game.R2D2.speedX=0;
+                        game.R2D2.speedY=750;
+						game.R2D2.moveFrame(time_sec);
+					}
+					game.tFrameLast=tFrame; 
+				}
+// boucle d'animation
+            function main(tFrame) {
+            let play = window.requestAnimationFrame(main);
+            if (!game.run) {
+              window.cancelAnimationFrame(play);
+              audioElement.pause();
+              document.getElementById('sable').src = "sky.png";
+              alert("Game over \nScore: "+ nbPoints + " points");
+            } else {
+              game.update(tFrame);
+            }		
+         }
+
+         //play
+        main(10);
+
+
+  
+
+    </script>
+    
+</body>
+</html>
